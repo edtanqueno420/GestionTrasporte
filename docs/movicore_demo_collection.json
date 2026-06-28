@@ -1,0 +1,390 @@
+{
+  "info": {
+    "name": "QuitoMove Demo API",
+    "description": "Colección completa PK-based para demo de QuitoMove Smart Mobility. Flujo: Auth → Catálogos → Rutas/Paradas → Operaciones → GPS → Incidentes → Analytics → Público.\n\nEjecutar seed primero: python manage.py seed_demo\n\nVariables pre-configuradas con IDs del seed:\n  route_id=5 (RT-ECO), vehicle_id=2 (ECO-001), trip_id=2 (en curso)\n  driver_id=2 (conductor1), schedule_id=1, incident_type_id=2 (Accidente)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000", "type": "string" },
+    { "key": "token", "value": "", "type": "string" },
+    { "key": "refresh_token", "value": "", "type": "string" },
+    { "key": "route_id", "value": "5", "type": "string" },
+    { "key": "vehicle_id", "value": "2", "type": "string" },
+    { "key": "trip_id", "value": "2", "type": "string" },
+    { "key": "driver_id", "value": "2", "type": "string" },
+    { "key": "schedule_id", "value": "1", "type": "string" },
+    { "key": "incident_id", "value": "", "type": "string" },
+    { "key": "incident_type_id", "value": "2", "type": "string" },
+    { "key": "bus_stop_id", "value": "1", "type": "string" },
+    { "key": "user_id", "value": "5", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "🔐 Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 201', () => pm.response.to.have.status(201));", "const json = pm.response.json();", "pm.collectionVariables.set('user_id', json.id);"], "type": "text/javascript" } }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"demo_user\",\n  \"password\": \"demo123\"\n}" },
+            "url": { "raw": "{{base_url}}/api/auth/register/", "host": ["{{base_url}}"], "path": ["api", "auth", "register"] }
+          }
+        },
+        {
+          "name": "Login (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('token', json.access);",
+                  "pm.collectionVariables.set('refresh_token', json.refresh);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\"\n}" },
+            "url": { "raw": "{{base_url}}/api/auth/login/", "host": ["{{base_url}}"], "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Login (conductor)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('token', json.access);",
+                  "pm.collectionVariables.set('refresh_token', json.refresh);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"conductor1\",\n  \"password\": \"demo123\"\n}" },
+            "url": { "raw": "{{base_url}}/api/auth/login/", "host": ["{{base_url}}"], "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"refresh\": \"{{refresh_token}}\"\n}" },
+            "url": { "raw": "{{base_url}}/api/auth/refresh/", "host": ["{{base_url}}"], "path": ["api", "auth", "refresh"] }
+          }
+        },
+        {
+          "name": "Get Me",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": { "raw": "{{base_url}}/api/auth/me/", "host": ["{{base_url}}"], "path": ["api", "auth", "me"] }
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{token}}"}],
+            "body": { "mode": "raw", "raw": "{\n  \"bio\": \"Conductor Ecovía demo\"\n}" },
+            "url": { "raw": "{{base_url}}/api/auth/profile/", "host": ["{{base_url}}"], "path": ["api", "auth", "profile"] }
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{token}}"}],
+            "body": { "mode": "raw", "raw": "{\n  \"old_password\": \"demo123\",\n  \"new_password\": \"newdemo123\"\n}" },
+            "url": { "raw": "{{base_url}}/api/auth/change-password/", "host": ["{{base_url}}"], "path": ["api", "auth", "change-password"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏗️ Catálogos",
+      "item": [
+        {
+          "name": "Create Transport Company",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 201', () => pm.response.to.have.status(201));", "const json = pm.response.json();", "pm.collectionVariables.set('company_id', json.id);"], "type": "text/javascript" } }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{token}}"}],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Nueva Operadora\",\n  \"tax_id\": \"1790098765001\",\n  \"phone\": \"+593 2 3333 333\",\n  \"email\": \"info@nuevaoperadora.ec\"\n}" },
+            "url": { "raw": "{{base_url}}/api/transport/transport-companies/", "host": ["{{base_url}}"], "path": ["api", "transport", "transport-companies"] }
+          }
+        },
+        {
+          "name": "List Routes",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": { "raw": "{{base_url}}/api/transport/routes/", "host": ["{{base_url}}"], "path": ["api", "transport", "routes"] }
+          }
+        },
+        {
+          "name": "Create Route",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 201', () => pm.response.to.have.status(201));", "const json = pm.response.json();", "pm.collectionVariables.set('route_id', json.id);"], "type": "text/javascript" } }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{token}}"}],
+            "body": { "mode": "raw", "raw": "{\n  \"code\": \"RT-NVA\",\n  \"name\": \"Nueva Ruta Demo\",\n  \"description\": \"Ruta de prueba desde Postman\"\n}" },
+            "url": { "raw": "{{base_url}}/api/transport/routes/", "host": ["{{base_url}}"], "path": ["api", "transport", "routes"] }
+          }
+        },
+        {
+          "name": "List Bus Stops",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": { "raw": "{{base_url}}/api/transport/bus-stops/", "host": ["{{base_url}}"], "path": ["api", "transport", "bus-stops"] }
+          }
+        },
+        {
+          "name": "Create Bus Stop",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 201', () => pm.response.to.have.status(201));", "const json = pm.response.json();", "pm.collectionVariables.set('bus_stop_id', json.id);"], "type": "text/javascript" } }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{token}}"}],
+            "body": { "mode": "raw", "raw": "{\n  \"code\": \"BS-NVA\",\n  \"name\": \"Parada Nueva\",\n  \"latitude\": -0.2200,\n  \"longitude\": -78.5000\n}" },
+            "url": { "raw": "{{base_url}}/api/transport/bus-stops/", "host": ["{{base_url}}"], "path": ["api", "transport", "bus-stops"] }
+          }
+        },
+        {
+          "name": "Assign Stop to Route",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 201', () => pm.response.to.have.status(201));", "const json = pm.response.json();", "pm.collectionVariables.set('route_bus_stop_id', json.id);"], "type": "text/javascript" } }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{token}}"}],
+            "body": { "mode": "raw", "raw": "{\n  \"route\": {{route_id}},\n  \"bus_stop\": {{bus_stop_id}},\n  \"stop_order\": 99\n}" },
+            "url": { "raw": "{{base_url}}/api/transport/route-bus-stops/", "host": ["{{base_url}}"], "path": ["api", "transport", "route-bus-stops"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🚍 Operaciones",
+      "item": [
+        {
+          "name": "Create Vehicle",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 201', () => pm.response.to.have.status(201));", "const json = pm.response.json();", "pm.collectionVariables.set('vehicle_id', json.id);"], "type": "text/javascript" } }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{token}}"}],
+            "body": { "mode": "raw", "raw": "{\n  \"plate\": \"NVA-001\",\n  \"brand\": \"BYD\",\n  \"model\": \"K9\",\n  \"year\": 2023,\n  \"capacity\": 120\n}" },
+            "url": { "raw": "{{base_url}}/api/transport/vehicles/", "host": ["{{base_url}}"], "path": ["api", "transport", "vehicles"] }
+          }
+        },
+        {
+          "name": "List Vehicles",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": { "raw": "{{base_url}}/api/transport/vehicles/", "host": ["{{base_url}}"], "path": ["api", "transport", "vehicles"] }
+          }
+        },
+        {
+          "name": "Create Driver",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 201', () => pm.response.to.have.status(201));", "const json = pm.response.json();", "pm.collectionVariables.set('driver_id', json.id);"], "type": "text/javascript" } }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{token}}"}],
+            "body": { "mode": "raw", "raw": "{\n  \"user\": {{user_id}},\n  \"license_number\": \"LIC-NVA-001\",\n  \"license_type\": \"C\",\n  \"hire_date\": \"2024-01-15\",\n  \"experience_years\": 3\n}" },
+            "url": { "raw": "{{base_url}}/api/operations/drivers/", "host": ["{{base_url}}"], "path": ["api", "operations", "drivers"] }
+          }
+        },
+        {
+          "name": "List Drivers",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": { "raw": "{{base_url}}/api/operations/drivers/", "host": ["{{base_url}}"], "path": ["api", "operations", "drivers"] }
+          }
+        },
+        {
+          "name": "Assign Driver to Vehicle",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 201', () => pm.response.to.have.status(201));", "const json = pm.response.json();", "pm.collectionVariables.set('assignment_id', json.id);"], "type": "text/javascript" } }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{token}}"}],
+            "body": { "mode": "raw", "raw": "{\n  \"driver\": {{driver_id}},\n  \"vehicle\": {{vehicle_id}},\n  \"assignment_date\": \"2026-06-28\",\n  \"is_active_assignment\": true\n}" },
+            "url": { "raw": "{{base_url}}/api/operations/driver-assignments/", "host": ["{{base_url}}"], "path": ["api", "operations", "driver-assignments"] }
+          }
+        },
+        {
+          "name": "Create Schedule",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 201', () => pm.response.to.have.status(201));", "const json = pm.response.json();", "pm.collectionVariables.set('schedule_id', json.id);"], "type": "text/javascript" } }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{token}}"}],
+            "body": { "mode": "raw", "raw": "{\n  \"route\": {{route_id}},\n  \"departure_time\": \"08:00:00\",\n  \"arrival_time\": \"09:30:00\",\n  \"frequency_minutes\": 20,\n  \"operating_days\": \"1234567\"\n}" },
+            "url": { "raw": "{{base_url}}/api/operations/schedules/", "host": ["{{base_url}}"], "path": ["api", "operations", "schedules"] }
+          }
+        },
+        {
+          "name": "Create Trip",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 201', () => pm.response.to.have.status(201));", "const json = pm.response.json();", "pm.collectionVariables.set('trip_id', json.id);"], "type": "text/javascript" } }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{token}}"}],
+            "body": { "mode": "raw", "raw": "{\n  \"route\": {{route_id}},\n  \"vehicle\": {{vehicle_id}},\n  \"driver\": {{driver_id}},\n  \"schedule\": {{schedule_id}},\n  \"trip_date\": \"2026-06-28\",\n  \"departure_datetime\": \"2026-06-28T14:00:00Z\",\n  \"arrival_datetime\": \"2026-06-28T15:30:00Z\",\n  \"status\": \"scheduled\",\n  \"passenger_count\": 60\n}" },
+            "url": { "raw": "{{base_url}}/api/operations/trips/", "host": ["{{base_url}}"], "path": ["api", "operations", "trips"] }
+          }
+        },
+        {
+          "name": "List Trips",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": { "raw": "{{base_url}}/api/operations/trips/", "host": ["{{base_url}}"], "path": ["api", "operations", "trips"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📍 GPS",
+      "item": [
+        {
+          "name": "Create GPS Position",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{token}}"}],
+            "body": { "mode": "raw", "raw": "{\n  \"trip\": {{trip_id}},\n  \"latitude\": -0.1694,\n  \"longitude\": -78.4779,\n  \"speed\": 25.5,\n  \"heading\": 180.0,\n  \"recorded_at\": \"2026-06-28T08:05:00Z\"\n}" },
+            "url": { "raw": "{{base_url}}/api/operations/gps-positions/", "host": ["{{base_url}}"], "path": ["api", "operations", "gps-positions"] }
+          }
+        },
+        {
+          "name": "List GPS by Trip",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": { "raw": "{{base_url}}/api/operations/gps-positions/?trip={{trip_id}}", "host": ["{{base_url}}"], "path": ["api", "operations", "gps-positions"] }
+          }
+        },
+        {
+          "name": "List GPS by Date Range",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": { "raw": "{{base_url}}/api/operations/gps-positions/?recorded_at_after=2026-06-28T08:00:00Z&recorded_at_before=2026-06-28T09:00:00Z", "host": ["{{base_url}}"], "path": ["api", "operations", "gps-positions"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🚨 Incidentes",
+      "item": [
+        {
+          "name": "Create Incident",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 201', () => pm.response.to.have.status(201));", "const json = pm.response.json();", "pm.collectionVariables.set('incident_id', json.id);"], "type": "text/javascript" } }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{token}}"}],
+            "body": { "mode": "raw", "raw": "{\n  \"trip\": {{trip_id}},\n  \"incident_type\": {{incident_type_id}},\n  \"vehicle\": {{vehicle_id}},\n  \"driver\": {{driver_id}},\n  \"latitude\": -0.1674,\n  \"longitude\": -78.4759,\n  \"description\": \"Freno de emergencia por obstáculo en la vía\",\n  \"severity\": \"medium\"\n}" },
+            "url": { "raw": "{{base_url}}/api/incidents/incidents/", "host": ["{{base_url}}"], "path": ["api", "incidents", "incidents"] }
+          }
+        },
+        {
+          "name": "List Incidents",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": { "raw": "{{base_url}}/api/incidents/incidents/", "host": ["{{base_url}}"], "path": ["api", "incidents", "incidents"] }
+          }
+        },
+        {
+          "name": "Resolve Incident",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"], "type": "text/javascript" } }],
+          "request": {
+            "method": "PATCH",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": { "raw": "{{base_url}}/api/incidents/incidents/{{incident_id}}/resolve/", "host": ["{{base_url}}"], "path": ["api", "incidents", "incidents", "{{incident_id}}", "resolve"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 Analytics",
+      "item": [
+        {
+          "name": "Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": { "raw": "{{base_url}}/api/analytics/dashboard/", "host": ["{{base_url}}"], "path": ["api", "analytics", "dashboard"] }
+          }
+        },
+        {
+          "name": "Route Report (RT-ECO)",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": { "raw": "{{base_url}}/api/analytics/routes/{{route_id}}/report/", "host": ["{{base_url}}"], "path": ["api", "analytics", "routes", "{{route_id}}", "report"] }
+          }
+        },
+        {
+          "name": "Vehicle Report (ECO-001)",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": { "raw": "{{base_url}}/api/analytics/vehicles/{{vehicle_id}}/report/", "host": ["{{base_url}}"], "path": ["api", "analytics", "vehicles", "{{vehicle_id}}", "report"] }
+          }
+        },
+        {
+          "name": "System Status (público)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/analytics/status/", "host": ["{{base_url}}"], "path": ["api", "analytics", "status"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🌍 Público (sin auth)",
+      "item": [
+        {
+          "name": "Public Routes",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/public/routes/", "host": ["{{base_url}}"], "path": ["api", "public", "routes"] }
+          }
+        },
+        {
+          "name": "Route Stops (RT-ECO PK=5)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/public/routes/{{route_id}}/stops/", "host": ["{{base_url}}"], "path": ["api", "public", "routes", "{{route_id}}", "stops"] }
+          }
+        },
+        {
+          "name": "Route Coordinates (RT-ECO PK=5)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/public/routes/{{route_id}}/coordinates/", "host": ["{{base_url}}"], "path": ["api", "public", "routes", "{{route_id}}", "coordinates"] }
+          }
+        },
+        {
+          "name": "Public Bus Stops",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/public/bus-stops/", "host": ["{{base_url}}"], "path": ["api", "public", "bus-stops"] }
+          }
+        }
+      ]
+    }
+  ]
+}
