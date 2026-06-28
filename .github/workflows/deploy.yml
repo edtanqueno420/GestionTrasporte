@@ -38,10 +38,9 @@ jobs:
       - name: Set up Python
         run: uv python install 3.12
 
-      - name: Create virtualenv and install dependencies
+      - name: Install dependencies
         run: |
-          uv venv
-          uv pip install -r requirements.txt
+          uv sync --frozen
 
       - name: Run tests
         env:
@@ -92,8 +91,7 @@ jobs:
             git reset --hard origin/main
 
             echo "── 2. Instalando dependencias ──"
-            uv venv
-            uv pip install -r requirements.txt
+            uv sync --frozen
 
             echo "── 3. Aplicando migraciones ──"
             mkdir -p logs
