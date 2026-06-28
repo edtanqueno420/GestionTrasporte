@@ -10,5 +10,3 @@ __pycache__/
 media/
 staticfiles/
 *.sqlite3
-
-.github/
