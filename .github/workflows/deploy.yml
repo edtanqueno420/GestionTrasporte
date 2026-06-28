@@ -96,6 +96,7 @@ jobs:
             uv pip install -r requirements.txt
 
             echo "── 3. Aplicando migraciones ──"
+            mkdir -p logs
             uv run python manage.py migrate --noinput
 
             echo "── 4. Recolectando estáticos ──"
