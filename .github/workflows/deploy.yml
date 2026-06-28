@@ -93,5 +93,5 @@ jobs:
 
             git pull origin main
 
-            sudo systemctl restart GestionTrasporte
+            sudo systemctl restart gunicorn-GestionTrasporte.service
           ENDSSH
