@@ -80,33 +80,18 @@ jobs:
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USERNAME }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         run: |
           ssh "$VPS_USER@$VPS_HOST" << 'ENDSSH'
             set -e
 
-            echo "── 1. Actualizando código ──"
-            cd "$DEPLOY_PATH"
-            git fetch origin
-            git reset --hard origin/main
+            cd /opt/GestionTrasporte
 
-            echo "── 2. Instalando dependencias ──"
-            uv sync --frozen
+            if [ ! -d .git ]; then
+              echo "ERROR: not a git repo"
+              exit 1
+            fi
 
-            echo "── 3. Aplicando migraciones ──"
-            mkdir -p logs
-            uv run python manage.py migrate --noinput
+            git pull origin main
 
-            echo "── 4. Recolectando estáticos ──"
-            uv run python manage.py collectstatic --noinput --clear
-
-            echo "── 5. Reiniciando servicios ──"
-            sudo systemctl restart gunicorn-movicore
-            sudo systemctl restart nginx
-
-            echo "── 6. Verificando salud ──"
-            sleep 3
-            curl -sf http://127.0.0.1/api/auth/health/ && echo "API OK" || echo "API ERROR"
-
-            echo "Despliegue completado exitosamente"
+            sudo systemctl restart gestiontrasporte
           ENDSSH
