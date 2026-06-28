@@ -1,0 +1,113 @@
+name: MoviCore — CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: movicore_db
+          POSTGRES_USER: movicore_user
+          POSTGRES_PASSWORD: movicore_pass
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Create virtualenv and install dependencies
+        run: |
+          uv venv
+          uv pip install -r requirements.txt
+
+      - name: Run tests
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.development
+          DJANGO_SECRET_KEY: test-secret-key-for-ci-only
+          DJANGO_DEBUG: True
+          DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+          DATABASE_URL: postgres://movicore_user:movicore_pass@localhost:5432/movicore_db
+        run: |
+          uv run python manage.py test \
+            apps.accounts \
+            apps.transport \
+            apps.operations \
+            apps.incidents \
+            apps.analytics \
+            apps.notifications \
+            --verbosity=2
+
+  deploy:
+    name: Deploy to VPS
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USERNAME }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          ssh "$VPS_USER@$VPS_HOST" << 'ENDSSH'
+            set -e
+
+            echo "── 1. Actualizando código ──"
+            cd "$DEPLOY_PATH"
+            git fetch origin
+            git reset --hard origin/main
+
+            echo "── 2. Instalando dependencias ──"
+            uv venv
+            uv pip install -r requirements.txt
+
+            echo "── 3. Aplicando migraciones ──"
+            uv run python manage.py migrate --noinput
+
+            echo "── 4. Recolectando estáticos ──"
+            uv run python manage.py collectstatic --noinput --clear
+
+            echo "── 5. Reiniciando servicios ──"
+            sudo systemctl restart gunicorn-movicore
+            sudo systemctl restart nginx
+
+            echo "── 6. Verificando salud ──"
+            sleep 3
+            curl -sf http://127.0.0.1/api/auth/health/ && echo "API OK" || echo "API ERROR"
+
+            echo "Despliegue completado exitosamente"
+          ENDSSH
