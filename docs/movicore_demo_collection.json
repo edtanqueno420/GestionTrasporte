@@ -27,7 +27,7 @@
   "item": [
     {
       "name": "🔐 Auth",
-      "description": "Tablas: accounts_user (Register/Login/Me), accounts_profile (Update Profile), accounts_audit_log (indirecto por signals al login/register/change-password)",
+      "description": "Tablas: accounts_user (Register/Login/Me), accounts_profile (Update Profile), accounts_audit_log (indirecto por signals al login/register/change-password)\n\n🔄 ORDEN: 1. Login primero → token + user_id se auto-asignan vía test script",
       "item": [
         {
           "name": "Register",
@@ -36,17 +36,17 @@
         },
         {
           "name": "Login (admin - prod)",
-          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));", "const json = pm.response.json();", "pm.collectionVariables.set('token', json.access);", "pm.collectionVariables.set('refresh_token', json.refresh);", "pm.collectionVariables.set('user_id', '');"], "type": "text/javascript"}}],
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));", "const json = pm.response.json();", "pm.collectionVariables.set('token', json.access);", "pm.collectionVariables.set('refresh_token', json.refresh);", "// Auto-fetch user ID from /me/ endpoint", "pm.sendRequest({", "  url: pm.variables.replaceIn('{{base_url}}/api/auth/me/'),", "  method: 'GET',", "  header: { Authorization: 'Bearer ' + json.access }", "}, function (err, res) {", "  if (!err) { const me = res.json(); pm.collectionVariables.set('user_id', me.id); }", "});"], "type": "text/javascript"}}],
           "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"username\": \"moviecoreadmin\",\n  \"password\": \"tanqueno123\"\n}"}, "url": {"raw": "{{base_url}}/api/auth/login/", "host": ["{{base_url}}"], "path": ["api", "auth", "login"]}}
         },
         {
           "name": "Login (admin - local)",
-          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));", "const json = pm.response.json();", "pm.collectionVariables.set('token', json.access);", "pm.collectionVariables.set('refresh_token', json.refresh);", "pm.collectionVariables.set('user_id', json.user?.id || '');"], "type": "text/javascript"}}],
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));", "const json = pm.response.json();", "pm.collectionVariables.set('token', json.access);", "pm.collectionVariables.set('refresh_token', json.refresh);", "// Auto-fetch user ID from /me/ endpoint", "pm.sendRequest({", "  url: pm.variables.replaceIn('{{base_url}}/api/auth/me/'),", "  method: 'GET',", "  header: { Authorization: 'Bearer ' + json.access }", "}, function (err, res) {", "  if (!err) { const me = res.json(); pm.collectionVariables.set('user_id', me.id); }", "});"], "type": "text/javascript"}}],
           "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\"\n}"}, "url": {"raw": "{{base_url}}/api/auth/login/", "host": ["{{base_url}}"], "path": ["api", "auth", "login"]}}
         },
         {
           "name": "Login (conductor)",
-          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));", "const json = pm.response.json();", "pm.collectionVariables.set('token', json.access);", "pm.collectionVariables.set('refresh_token', json.refresh);"], "type": "text/javascript"}}],
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));", "const json = pm.response.json();", "pm.collectionVariables.set('token', json.access);", "pm.collectionVariables.set('refresh_token', json.refresh);", "// Auto-fetch user ID from /me/ endpoint", "pm.sendRequest({", "  url: pm.variables.replaceIn('{{base_url}}/api/auth/me/'),", "  method: 'GET',", "  header: { Authorization: 'Bearer ' + json.access }", "}, function (err, res) {", "  if (!err) { const me = res.json(); pm.collectionVariables.set('user_id', me.id); }", "});"], "type": "text/javascript"}}],
           "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"username\": \"conductor1\",\n  \"password\": \"demo123\"\n}"}, "url": {"raw": "{{base_url}}/api/auth/login/", "host": ["{{base_url}}"], "path": ["api", "auth", "login"]}}
         },
         {
@@ -73,7 +73,7 @@
     },
     {
       "name": "🏗️ Catálogos",
-      "description": "Tablas: transport_company, transport_district, transport_sector, transport_vehicle_type, transport_vehicle_status. Requiere admin para writes.",
+      "description": "Tablas: transport_company, transport_district, transport_sector, transport_vehicle_type, transport_vehicle_status. Requiere admin para writes.\n\n🔄 ORDEN: 2. Create District → Sector → Transport Company → Vehicle Type → Vehicle Status. Cada uno auto-asigna su ID.",
       "item": [
         {
           "name": "[ADMIN] Create District",
@@ -124,7 +124,7 @@
     },
     {
       "name": "🚍 Rutas y Paradas",
-      "description": "Tablas: transport_route, transport_bus_stop, transport_route_bus_stop, transport_vehicle. Requiere admin para writes.",
+      "description": "Tablas: transport_route, transport_bus_stop, transport_route_bus_stop, transport_vehicle. Requiere admin para writes.\n\n🔄 ORDEN: 3. Create Route → Create Bus Stop → Assign Stop to Route → Create Vehicle. Cada uno auto-asigna su ID.",
       "item": [
         {
           "name": "List Routes",
@@ -166,7 +166,7 @@
     },
     {
       "name": "👷 Operaciones",
-      "description": "Tablas: operations_driver, operations_driver_assignment, operations_schedule, operations_route_coordinate, operations_maintenance, operations_trip. Requiere admin para writes.",
+      "description": "Tablas: operations_driver, operations_driver_assignment, operations_schedule, operations_route_coordinate, operations_maintenance, operations_trip. Requiere admin para writes.\n\n🔄 ORDEN: 4. Create Driver → Assign Driver to Vehicle → Create Schedule → Create Route Coord → Create Maintenance → Create Trip. Cada uno auto-asigna su ID.",
       "item": [
         {
           "name": "[ADMIN] Create Driver",
