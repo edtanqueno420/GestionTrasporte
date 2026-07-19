@@ -1,0 +1,8 @@
+¡Bienvenido a MoviCore, {{ username }}!
+
+Tu cuenta ha sido creada exitosamente con el correo {{ email }}.
+
+Ya puedes acceder al sistema de gestión de movilidad urbana.
+
+---
+Este es un correo automático, por favor no respondas.

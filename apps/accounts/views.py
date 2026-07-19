@@ -1,16 +1,22 @@
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from apps.accounts.models import AuditLog, Profile
+from apps.accounts.models import AuditLog, Profile, User
 from apps.accounts.serializers import (
     ChangePasswordSerializer,
+    PasswordResetConfirmSerializer,
+    PasswordResetRequestSerializer,
     ProfileSerializer,
     RegisterSerializer,
     UserSerializer,
 )
+from apps.accounts.services.email import send_password_reset_email
 
 
 class HealthCheckView(APIView):
@@ -154,6 +160,55 @@ class ProfileView(generics.UpdateAPIView):
     )
     def patch(self, request, *args, **kwargs):
         return super().patch(request, *args, **kwargs)
+
+
+class PasswordResetRequestView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    @extend_schema(
+        summary="Solicitar reset de contraseña",
+        description="Envía un correo con enlace de recuperación. Siempre responde 200 para evitar enumeración de usuarios.",
+        tags=["Auth"],
+        request=PasswordResetRequestSerializer,
+        responses={200: OpenApiResponse(description="Correo enviado si el email está registrado")},
+    )
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data["email"]
+        try:
+            user = User.objects.get(email=email, is_active=True)
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+            send_password_reset_email(user, uid, token)
+        except User.DoesNotExist:
+            pass
+
+        return Response(
+            {"detail": "Si el correo está registrado, recibirás un enlace de recuperación."},
+            status=status.HTTP_200_OK,
+        )
+
+
+class PasswordResetConfirmView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    @extend_schema(
+        summary="Confirmar reset de contraseña",
+        description="Valida el token y actualiza la contraseña. El token queda inválido tras el primer uso.",
+        tags=["Auth"],
+        request=PasswordResetConfirmSerializer,
+        responses={200: OpenApiResponse(description="Contraseña actualizada correctamente")},
+    )
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(
+            {"detail": "Contraseña actualizada correctamente."},
+            status=status.HTTP_200_OK,
+        )
 
 
 class ChangePasswordView(APIView):
