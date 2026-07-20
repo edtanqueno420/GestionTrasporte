@@ -17,6 +17,10 @@ def _parse_from_email():
 
 
 def send_email(subject: str, html_content: str, recipient: str, text_content: str | None = None) -> None:
+    if not settings.BREVO_API_KEY:
+        logger.warning("BREVO_API_KEY no configurada — correo no enviado a %s", recipient)
+        return
+
     configuration = Configuration()
     configuration.api_key["api-key"] = settings.BREVO_API_KEY
     api_instance = TransactionalEmailsApi(ApiClient(configuration))

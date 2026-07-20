@@ -171,7 +171,7 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="MoviCore <noreply@movico
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:8000")
 PASSWORD_RESET_TIMEOUT = 86400
 
-BREVO_API_KEY = env("BREVO_API_KEY")
+BREVO_API_KEY = env("BREVO_API_KEY", default="")
 
 LOGGING = {
     "version": 1,
