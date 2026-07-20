@@ -1,20 +1,13 @@
-from django.core.mail import EmailMultiAlternatives
-from django.template.loader import render_to_string
 from django.conf import settings
+from django.template.loader import render_to_string
+
+from apps.common.services.brevo_service import send_email as brevo_send
 
 
 def _send(subject: str, to: str, txt_template: str, html_template: str, context: dict) -> None:
     text_body = render_to_string(txt_template, context)
     html_body = render_to_string(html_template, context)
-
-    msg = EmailMultiAlternatives(
-        subject=subject,
-        body=text_body,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        to=[to],
-    )
-    msg.attach_alternative(html_body, "text/html")
-    msg.send(fail_silently=False)
+    brevo_send(subject, html_body, to, text_content=text_body)
 
 
 def send_welcome_email(user) -> None:
