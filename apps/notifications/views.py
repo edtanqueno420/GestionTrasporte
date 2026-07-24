@@ -1,14 +1,15 @@
 from drf_spectacular.utils import OpenApiExample, OpenApiParameter, OpenApiResponse, extend_schema, extend_schema_view
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import mixins
 from rest_framework.decorators import action
-from rest_framework.permissions import SAFE_METHODS
+from rest_framework.permissions import IsAuthenticated, SAFE_METHODS
 from rest_framework.response import Response
-from rest_framework.viewsets import ModelViewSet
+from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
 from apps.accounts.permissions import ReadOnlyOrAdminWrite
-from apps.notifications.models import Notification
+from apps.notifications.models import FCMToken, Notification
 from apps.notifications.permissions import IsRecipientOrAdmin
-from apps.notifications.serializers import NotificationSerializer
+from apps.notifications.serializers import FCMTokenSerializer, NotificationSerializer
 
 
 @extend_schema_view(
@@ -85,3 +86,35 @@ class NotificationViewSet(ModelViewSet):
         qs = self.get_queryset().filter(is_read=False)
         count = qs.update(is_read=True)
         return Response({"marked_read": count})
+
+
+@extend_schema_view(
+    create=extend_schema(
+        summary="Registrar token FCM",
+        description="Registrar o actualizar un token de Firebase Cloud Messaging para el usuario autenticado. Si el token ya existe, se reactiva.",
+        tags=["Notifications"],
+        request=FCMTokenSerializer,
+        responses={201: FCMTokenSerializer, 200: FCMTokenSerializer},
+    ),
+    list=extend_schema(
+        summary="Mis tokens FCM",
+        description="Listar los tokens FCM registrados por el usuario autenticado.",
+        tags=["Notifications"],
+    ),
+)
+class FCMTokenViewSet(mixins.CreateModelMixin, mixins.ListModelMixin, GenericViewSet):
+    serializer_class = FCMTokenSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return FCMToken.objects.filter(user=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        token = request.data.get("token", "")
+        platform = request.data.get("platform", "web")
+        obj, created = FCMToken.objects.update_or_create(
+            token=token,
+            defaults={"user": request.user, "platform": platform, "is_active": True},
+        )
+        serializer = self.get_serializer(obj)
+        return Response(serializer.data, status=201 if created else 200)

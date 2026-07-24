@@ -173,6 +173,9 @@ PASSWORD_RESET_TIMEOUT = 86400
 
 BREVO_API_KEY = env("BREVO_API_KEY", default="")
 
+# --- Firebase Cloud Messaging -------------------------------------------
+FIREBASE_CREDENTIALS_PATH = env("FIREBASE_CREDENTIALS_PATH", default="")
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,

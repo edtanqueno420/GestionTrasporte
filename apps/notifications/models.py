@@ -48,3 +48,30 @@ class UserNotificationPreference(BaseModel):
 
     def __str__(self):
         return f"Preferencias de {self.user}"
+
+
+class FCMToken(BaseModel):
+    class Platform(models.TextChoices):
+        ANDROID = "android", "Android"
+        IOS = "ios", "iOS"
+        WEB = "web", "Web"
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE,
+        related_name="fcm_tokens", verbose_name="usuario",
+    )
+    token = models.CharField("token FCM", max_length=500, unique=True)
+    platform = models.CharField(
+        "plataforma", max_length=10,
+        choices=Platform.choices, default=Platform.WEB,
+    )
+    is_active = models.BooleanField("activo", default=True)
+
+    class Meta:
+        db_table = "notifications_fcm_token"
+        verbose_name = "token FCM"
+        verbose_name_plural = "tokens FCM"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user} - {self.platform} ({self.token[:20]}...)"

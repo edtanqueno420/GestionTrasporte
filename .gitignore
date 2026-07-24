@@ -10,3 +10,8 @@ __pycache__/
 media/
 staticfiles/
 *.sqlite3
+*-firebase-adminsdk-*.json
+*-firebaseadminsdk-*.json
+service-account*.json
+firebase-service-account.json
+FireBase/
