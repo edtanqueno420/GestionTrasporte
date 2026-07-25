@@ -24,7 +24,8 @@ def send_welcome_email(user) -> None:
 
 
 def send_password_reset_email(user, uid: str, token: str) -> None:
-    reset_url = f"{settings.FRONTEND_URL}/password-reset/confirm/?uid={uid}&token={token}"
+    web_url = f"{settings.FRONTEND_URL}/reset-password?uid={uid}&token={token}"
+    mobile_url = f"{settings.MOBILE_SCHEME}://reset-password?uid={uid}&token={token}"
     _send(
         subject="Recuperación de contraseña — MoviCore",
         to=user.email,
@@ -32,6 +33,7 @@ def send_password_reset_email(user, uid: str, token: str) -> None:
         html_template="emails/password_reset.html",
         context={
             "username": user.username,
-            "reset_url": reset_url,
+            "reset_url": web_url,
+            "mobile_url": mobile_url,
         },
     )

@@ -175,6 +175,7 @@ BREVO_API_KEY = env("BREVO_API_KEY", default="")
 
 # --- Firebase Cloud Messaging -------------------------------------------
 FIREBASE_CREDENTIALS_PATH = env("FIREBASE_CREDENTIALS_PATH", default="")
+MOBILE_SCHEME = env("MOBILE_SCHEME", default="movicore")
 
 LOGGING = {
     "version": 1,
