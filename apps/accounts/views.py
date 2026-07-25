@@ -1,3 +1,4 @@
+from django.contrib.auth import authenticate
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
@@ -10,6 +11,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from apps.accounts.models import AuditLog, Profile, User
 from apps.accounts.serializers import (
     ChangePasswordSerializer,
+    CustomTokenObtainPairSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
     ProfileSerializer,
@@ -84,9 +86,11 @@ class RegisterView(generics.CreateAPIView):
 
 
 class LoginView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
+
     @extend_schema(
         summary="Iniciar sesión",
-        description="Autenticar usuario y obtener tokens JWT (access + refresh). El access expira en 30 min, el refresh en 1 día.",
+        description="Autenticar usuario y obtener tokens JWT (access + refresh). Acepta username o email. El access expira en 30 min, el refresh en 1 día.",
         tags=["Auth"],
         responses={
             200: OpenApiResponse(
@@ -100,13 +104,13 @@ class LoginView(TokenObtainPairView):
         },
         examples=[
             OpenApiExample(
-                name="Login admin",
+                name="Login con username",
                 value={"username": "admin", "password": "admin123"},
                 request_only=True,
             ),
             OpenApiExample(
-                name="Login conductor",
-                value={"username": "conductor1", "password": "demo123"},
+                name="Login con email",
+                value={"email": "admin@test.com", "password": "admin123"},
                 request_only=True,
             ),
         ],
@@ -114,10 +118,9 @@ class LoginView(TokenObtainPairView):
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
         if response.status_code == 200:
-            from django.contrib.auth import authenticate
             user = authenticate(
                 request=request,
-                username=request.data.get("username"),
+                username=request.data.get("username") or request.data.get("email"),
                 password=request.data.get("password"),
             )
             if user:

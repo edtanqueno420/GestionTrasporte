@@ -1,9 +1,10 @@
-from django.contrib.auth import password_validation
+from django.contrib.auth import authenticate, password_validation
 from django.contrib.auth.models import Group
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from apps.accounts.models import AuditLog, Profile, User
 
@@ -36,6 +37,11 @@ class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["username", "email", "password", "first_name", "last_name", "phone"]
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("Ya existe una cuenta con este correo electrónico.")
+        return value
 
     def create(self, validated_data):
         user = User.objects.create_user(**validated_data)
@@ -97,3 +103,27 @@ class AuditLogSerializer(serializers.ModelSerializer):
         model = AuditLog
         fields = ["id", "user", "action", "detail", "created_at"]
         read_only_fields = ["id", "created_at"]
+
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    username_field = "username"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["email"] = serializers.EmailField(required=False)
+
+    def validate(self, attrs):
+        username = attrs.get("username", "")
+        email = attrs.get("email", "")
+        password = attrs.get("password", "")
+
+        if email and not username:
+            try:
+                user = User.objects.get(email=email)
+                attrs["username"] = user.username
+            except User.DoesNotExist:
+                raise serializers.ValidationError(
+                    {"email": "No existe una cuenta con este correo electrónico."}
+                )
+
+        return super().validate(attrs)
