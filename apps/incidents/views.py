@@ -175,6 +175,9 @@ class IncidentViewSet(ModelViewSet):
                 status=400,
             )
 
+        ref_lat_rad = Radians(Value(lat, output_field=FloatField()))
+        ref_lng_rad = Radians(Value(lng, output_field=FloatField()))
+
         incidents = Incident.objects.filter(
             is_active=True,
             status__in=[Incident.Status.OPEN, Incident.Status.IN_PROGRESS],
@@ -183,9 +186,9 @@ class IncidentViewSet(ModelViewSet):
             lng_rad=Radians(Cast(F("longitude"), output_field=FloatField())),
         ).annotate(
             distance_km=ACos(
-                Cos(Value(lat, output_field=FloatField())) * Cos(F("lat_rad"))
-                * Cos(F("lng_rad") - Value(lng, output_field=FloatField()))
-                + Sin(Value(lat, output_field=FloatField())) * Sin(F("lat_rad"))
+                Cos(ref_lat_rad) * Cos(F("lat_rad"))
+                * Cos(F("lng_rad") - ref_lng_rad)
+                + Sin(ref_lat_rad) * Sin(F("lat_rad"))
             ) * 6371,
         ).filter(
             distance_km__lte=radius_km,
