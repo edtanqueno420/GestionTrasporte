@@ -1,6 +1,6 @@
 import django_filters
-from django.db.models import F, Value
-from django.db.models.functions import Radians, Sin, Cos, ACos
+from django.db.models import F, FloatField, Value
+from django.db.models.functions import ACos, Cast, Cos, Radians, Sin
 from django.utils.timezone import now
 from drf_spectacular.utils import OpenApiExample, OpenApiParameter, OpenApiResponse, extend_schema, extend_schema_view
 from django_filters.rest_framework import DjangoFilterBackend
@@ -179,10 +179,13 @@ class IncidentViewSet(ModelViewSet):
             is_active=True,
             status__in=[Incident.Status.OPEN, Incident.Status.IN_PROGRESS],
         ).annotate(
+            lat_rad=Radians(Cast(F("latitude"), output_field=FloatField())),
+            lng_rad=Radians(Cast(F("longitude"), output_field=FloatField())),
+        ).annotate(
             distance_km=ACos(
-                Cos(Radians(lat)) * Cos(Radians(F("latitude")))
-                * Cos(Radians(F("longitude")) - Radians(lng))
-                + Sin(Radians(lat)) * Sin(Radians(F("latitude")))
+                Cos(Value(lat, output_field=FloatField())) * Cos(F("lat_rad"))
+                * Cos(F("lng_rad") - Value(lng, output_field=FloatField()))
+                + Sin(Value(lat, output_field=FloatField())) * Sin(F("lat_rad"))
             ) * 6371,
         ).filter(
             distance_km__lte=radius_km,
