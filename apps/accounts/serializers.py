@@ -118,8 +118,11 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         username = attrs.get("username", "")
 
         if email and not username:
+            username = email
+
+        if username and "@" in username:
             try:
-                user = User.objects.get(email=email)
+                user = User.objects.get(email=username)
                 attrs["username"] = user.username
             except User.DoesNotExist:
                 raise serializers.ValidationError(
