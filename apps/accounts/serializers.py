@@ -110,12 +110,12 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["username"].required = False
         self.fields["email"] = serializers.EmailField(required=False)
 
     def validate(self, attrs):
-        username = attrs.get("username", "")
         email = attrs.get("email", "")
-        password = attrs.get("password", "")
+        username = attrs.get("username", "")
 
         if email and not username:
             try:
@@ -125,5 +125,10 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                 raise serializers.ValidationError(
                     {"email": "No existe una cuenta con este correo electrónico."}
                 )
+
+        if not attrs.get("username"):
+            raise serializers.ValidationError(
+                {"username": "Se requiere username o email."}
+            )
 
         return super().validate(attrs)
