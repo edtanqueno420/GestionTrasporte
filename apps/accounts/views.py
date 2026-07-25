@@ -16,6 +16,7 @@ from apps.accounts.serializers import (
     PasswordResetRequestSerializer,
     ProfileSerializer,
     RegisterSerializer,
+    UserLocationSerializer,
     UserSerializer,
 )
 from apps.accounts.services.email import send_password_reset_email
@@ -249,5 +250,45 @@ class ChangePasswordView(APIView):
         )
         return Response(
             {"success": True, "message": "Contraseña actualizada correctamente"},
+            status=status.HTTP_200_OK,
+        )
+
+
+class UserLocationView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        summary="Actualizar ubicación del usuario",
+        description="Actualiza la última ubicación conocida del usuario autenticado. La app móvil debe llamar a este endpoint periódicamente con la posición GPS del dispositivo.",
+        tags=["Auth"],
+        request=UserLocationSerializer,
+        responses={
+            200: OpenApiResponse(
+                description="Ubicación actualizada correctamente",
+                response={"type": "object", "properties": {
+                    "success": {"type": "boolean", "example": True},
+                    "latitude": {"type": "string", "example": "-0.180700"},
+                    "longitude": {"type": "string", "example": "-78.467800"},
+                }},
+            ),
+        },
+        examples=[
+            OpenApiExample(
+                name="Actualizar ubicación",
+                value={"latitude": -0.1807, "longitude": -78.4678},
+                request_only=True,
+            ),
+        ],
+    )
+    def post(self, request):
+        serializer = UserLocationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(user=request.user)
+        return Response(
+            {
+                "success": True,
+                "latitude": str(serializer.validated_data["latitude"]),
+                "longitude": str(serializer.validated_data["longitude"]),
+            },
             status=status.HTTP_200_OK,
         )

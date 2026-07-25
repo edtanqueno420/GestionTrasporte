@@ -6,6 +6,14 @@ from apps.accounts.base import BaseModel
 
 class User(AbstractUser):
     phone = models.CharField("teléfono", max_length=20, blank=True)
+    last_latitude = models.DecimalField(
+        "latitud", max_digits=9, decimal_places=6,
+        null=True, blank=True,
+    )
+    last_longitude = models.DecimalField(
+        "longitud", max_digits=9, decimal_places=6,
+        null=True, blank=True,
+    )
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

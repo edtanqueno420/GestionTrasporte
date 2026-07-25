@@ -1,6 +1,7 @@
 import django_filters
 from drf_spectacular.utils import OpenApiExample, OpenApiParameter, OpenApiResponse, extend_schema, extend_schema_view
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.viewsets import ModelViewSet
 
@@ -223,3 +224,47 @@ class GPSPositionViewSet(ModelViewSet):
     filterset_class = GPSPositionFilter
     ordering_fields = ["trip", "recorded_at"]
     ordering = ["trip", "recorded_at"]
+
+    @extend_schema(
+        summary="Últimas posiciones GPS activas",
+        description="Obtener la posición más reciente de cada viaje en curso (in_progress). Devuelve solo la última posición por viaje, útil para mostrar buses en tiempo real en el mapa.",
+        tags=["Operations"],
+        responses={
+            200: OpenApiResponse(
+                description="Lista de posiciones GPS más recientes por viaje activo",
+                response={"type": "object", "properties": {
+                    "count": {"type": "integer"},
+                    "results": {"type": "array", "items": {"type": "object"}},
+                }},
+            ),
+        },
+    )
+    @action(detail=False, methods=["get"])
+    def active(self, request):
+        from django.db.models import Max
+
+        active_trips = Trip.objects.filter(
+            status=Trip.Status.IN_PROGRESS,
+            is_active=True,
+        ).values("id").annotate(
+            latest_recorded_at=Max("positions__recorded_at"),
+        ).filter(latest_recorded_at__isnull=False)
+
+        trip_ids = [t["id"] for t in active_trips]
+
+        positions = GPSPosition.objects.filter(
+            trip_id__in=trip_ids,
+            is_active=True,
+        ).select_related("trip", "trip__route", "trip__vehicle")
+
+        latest_positions = []
+        for trip_id in trip_ids:
+            pos = positions.filter(trip_id=trip_id).order_by("-recorded_at").first()
+            if pos:
+                latest_positions.append(pos)
+
+        serializer = GPSPositionSerializer(latest_positions, many=True)
+        return Response({
+            "count": len(serializer.data),
+            "results": serializer.data,
+        })

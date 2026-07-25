@@ -26,7 +26,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             "id", "username", "email", "first_name", "last_name",
             "phone", "is_active", "groups", "date_joined", "updated_at",
-            "profile",
+            "profile", "last_latitude", "last_longitude",
         ]
         read_only_fields = ["id", "groups", "date_joined", "updated_at", "profile"]
 
@@ -135,3 +135,24 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             )
 
         return super().validate(attrs)
+
+
+class UserLocationSerializer(serializers.Serializer):
+    latitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=True)
+    longitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=True)
+
+    def validate_latitude(self, value):
+        if value < -90 or value > 90:
+            raise serializers.ValidationError("La latitud debe estar entre -90 y 90.")
+        return value
+
+    def validate_longitude(self, value):
+        if value < -180 or value > 180:
+            raise serializers.ValidationError("La longitud debe estar entre -180 y 180.")
+        return value
+
+    def save(self, user):
+        user.last_latitude = self.validated_data["latitude"]
+        user.last_longitude = self.validated_data["longitude"]
+        user.save(update_fields=["last_latitude", "last_longitude"])
+        return user

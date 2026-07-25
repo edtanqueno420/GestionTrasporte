@@ -1,4 +1,6 @@
 import django_filters
+from django.db.models import F, Value
+from django.db.models.functions import Radians, Sin, Cos, ACos
 from django.utils.timezone import now
 from drf_spectacular.utils import OpenApiExample, OpenApiParameter, OpenApiResponse, extend_schema, extend_schema_view
 from django_filters.rest_framework import DjangoFilterBackend
@@ -125,3 +127,69 @@ class IncidentViewSet(ModelViewSet):
         incident.resolved_at = now()
         incident.save()
         return Response(IncidentSerializer(incident).data)
+
+    @extend_schema(
+        summary="Incidentes cercanos",
+        description="Obtener incidentes dentro de un radio específico (en km) desde una ubicación dada. Ordenados por distancia. Útil para alertar a usuarios sobre incidentes en su zona.",
+        tags=["Incidents"],
+        parameters=[
+            OpenApiParameter(name="lat", type=float, required=True, description="Latitud del punto de referencia"),
+            OpenApiParameter(name="lng", type=float, required=True, description="Longitud del punto de referencia"),
+            OpenApiParameter(name="radius_km", type=float, required=False, description="Radio en kilómetros (default: 2.0)", default=2.0),
+        ],
+        responses={
+            200: OpenApiResponse(
+                description="Lista de incidentes cercanos con distancia en km",
+                response={"type": "object", "properties": {
+                    "count": {"type": "integer"},
+                    "results": {"type": "array", "items": {"type": "object"}},
+                }},
+            ),
+        },
+        examples=[
+            OpenApiExample(
+                name="Incidentes en 2km de la UTE",
+                value={"lat": -0.1807, "lng": -78.4678, "radius_km": 2.0},
+                request_only=True,
+            ),
+        ],
+    )
+    @action(detail=False, methods=["get"])
+    def nearby(self, request):
+        lat = request.query_params.get("lat")
+        lng = request.query_params.get("lng")
+        radius_km = float(request.query_params.get("radius_km", 2.0))
+
+        if not lat or not lng:
+            return Response(
+                {"error": "Se requieren los parámetros lat y lng"},
+                status=400,
+            )
+
+        try:
+            lat = float(lat)
+            lng = float(lng)
+        except (TypeError, ValueError):
+            return Response(
+                {"error": "lat y lng deben ser números válidos"},
+                status=400,
+            )
+
+        incidents = Incident.objects.filter(
+            is_active=True,
+            status__in=[Incident.Status.OPEN, Incident.Status.IN_PROGRESS],
+        ).annotate(
+            distance_km=ACos(
+                Cos(Radians(lat)) * Cos(Radians(F("latitude")))
+                * Cos(Radians(F("longitude")) - Radians(lng))
+                + Sin(Radians(lat)) * Sin(Radians(F("latitude")))
+            ) * 6371,
+        ).filter(
+            distance_km__lte=radius_km,
+        ).order_by("distance_km")
+
+        serializer = IncidentListSerializer(incidents, many=True)
+        return Response({
+            "count": len(serializer.data),
+            "results": serializer.data,
+        })
